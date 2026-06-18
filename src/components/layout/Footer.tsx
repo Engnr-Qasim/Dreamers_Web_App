@@ -32,7 +32,7 @@ const Footer: React.FC = () => {
               className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors hover:scale-105"
             >
               <MessageCircle className="w-4 h-4" />
-              WhatsApp: {whatsappNumber}
+              WhatsApp hello: {whatsappNumber}
             </a>
           </div>
 
