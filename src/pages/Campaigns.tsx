@@ -1,19 +1,31 @@
-import React, { useState, useEffect } from 'react';
-import MainLayout from '@/components/layout/MainLayout';
-import CampaignCard from '@/components/dashboard/CampaignCard';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CAMPAIGNS, ACTIVITIES } from '@/lib/campaigns';
-import { useAuth } from '@/contexts/AuthContext';
-import { getUserCampaigns } from '@/lib/storage';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Calendar, Crown } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import MainLayout from "@/components/layout/MainLayout";
+import CampaignCard from "@/components/dashboard/CampaignCard";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CAMPAIGNS, ACTIVITIES } from "@/lib/campaigns";
+import { useUser } from "@clerk/clerk-react";
+import { getUserCampaigns } from "@/lib/storage";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Calendar, Crown } from "lucide-react";
 
 const Campaigns: React.FC = () => {
-  const { user } = useAuth();
-  const [, forceUpdate] = React.useReducer(x => x + 1, 0);
-  const [selectedActivity, setSelectedActivity] = useState<typeof ACTIVITIES[0] | null>(null);
+  const { user } = useUser();
+  const [, forceUpdate] = React.useReducer((x) => x + 1, 0);
+  const [selectedActivity, setSelectedActivity] = useState<
+    (typeof ACTIVITIES)[0] | null
+  >(null);
   const [joinedCampaignIds, setJoinedCampaignIds] = useState<string[]>([]);
 
   useEffect(() => {
@@ -28,19 +40,20 @@ const Campaigns: React.FC = () => {
 
   const handleJoinChange = () => {
     forceUpdate();
-    // Reload campaigns
     if (user) {
       getUserCampaigns(user.id).then(setJoinedCampaignIds);
     }
   };
 
-  const joinedCampaigns = CAMPAIGNS.filter(c => joinedCampaignIds.includes(c.id));
+  const joinedCampaigns = CAMPAIGNS.filter((c) =>
+    joinedCampaignIds.includes(c.id),
+  );
 
   const categoryCounts = {
     all: CAMPAIGNS.length,
-    environment: CAMPAIGNS.filter(c => c.category === 'environment').length,
-    community: CAMPAIGNS.filter(c => c.category === 'community').length,
-    awareness: CAMPAIGNS.filter(c => c.category === 'awareness').length,
+    environment: CAMPAIGNS.filter((c) => c.category === "environment").length,
+    community: CAMPAIGNS.filter((c) => c.category === "community").length,
+    awareness: CAMPAIGNS.filter((c) => c.category === "awareness").length,
   };
 
   return (
@@ -59,11 +72,15 @@ const Campaigns: React.FC = () => {
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-slide-up">
           <Card className="gradient-card border-0 shadow-card p-4 text-center">
-            <p className="text-3xl font-bold text-primary">{categoryCounts.all}</p>
+            <p className="text-3xl font-bold text-primary">
+              {categoryCounts.all}
+            </p>
             <p className="text-sm text-muted-foreground">Total Campaigns</p>
           </Card>
           <Card className="gradient-card border-0 shadow-card p-4 text-center">
-            <p className="text-3xl font-bold text-success">{joinedCampaigns.length}</p>
+            <p className="text-3xl font-bold text-success">
+              {joinedCampaigns.length}
+            </p>
             <p className="text-sm text-muted-foreground">Your Campaigns</p>
           </Card>
           <Card className="gradient-card border-0 shadow-card p-4 text-center">
@@ -79,49 +96,58 @@ const Campaigns: React.FC = () => {
         </div>
 
         {/* Campaigns Tabs */}
-        <Tabs defaultValue="all" className="animate-slide-up" style={{ animationDelay: '0.1s' }}>
+        <Tabs
+          defaultValue="all"
+          className="animate-slide-up"
+          style={{ animationDelay: "0.1s" }}
+        >
           <TabsList className="grid w-full grid-cols-4 md:w-auto md:inline-grid">
             <TabsTrigger value="all">All ({categoryCounts.all})</TabsTrigger>
             <TabsTrigger value="environment">🌳 Environment</TabsTrigger>
             <TabsTrigger value="community">🏘️ Community</TabsTrigger>
             <TabsTrigger value="awareness">📢 Awareness</TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="all" className="mt-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {CAMPAIGNS.map((campaign) => (
-                <CampaignCard 
-                  key={campaign.id} 
+                <CampaignCard
+                  key={campaign.id}
                   campaign={campaign}
                   onJoinChange={handleJoinChange}
                 />
               ))}
             </div>
           </TabsContent>
-          
-          {['environment', 'community', 'awareness'].map((category) => (
+
+          {["environment", "community", "awareness"].map((category) => (
             <TabsContent key={category} value={category} className="mt-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {CAMPAIGNS.filter(c => c.category === category).map((campaign) => (
-                  <CampaignCard 
-                    key={campaign.id} 
-                    campaign={campaign}
-                    onJoinChange={handleJoinChange}
-                  />
-                ))}
+                {CAMPAIGNS.filter((c) => c.category === category).map(
+                  (campaign) => (
+                    <CampaignCard
+                      key={campaign.id}
+                      campaign={campaign}
+                      onJoinChange={handleJoinChange}
+                    />
+                  ),
+                )}
               </div>
             </TabsContent>
           ))}
         </Tabs>
 
         {/* Activities Section */}
-        <div className="space-y-4 animate-slide-up" style={{ animationDelay: '0.2s' }}>
+        <div
+          className="space-y-4 animate-slide-up"
+          style={{ animationDelay: "0.2s" }}
+        >
           <h2 className="text-2xl font-bold flex items-center gap-2">
             <span>⚡</span> Upcoming Activities
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {ACTIVITIES.map((activity) => (
-              <Card 
+              <Card
                 key={activity.id}
                 className="hover-lift gradient-card border-0 shadow-card overflow-hidden cursor-pointer group"
                 onClick={() => setSelectedActivity(activity)}
@@ -132,7 +158,10 @@ const Campaigns: React.FC = () => {
                       {activity.icon}
                     </span>
                     {activity.isPremium && (
-                      <Badge variant="secondary" className="bg-warning/10 text-warning">
+                      <Badge
+                        variant="secondary"
+                        className="bg-warning/10 text-warning"
+                      >
                         <Crown className="w-3 h-3 mr-1" />
                         Premium
                       </Badge>
@@ -147,10 +176,10 @@ const Campaigns: React.FC = () => {
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Calendar className="w-3 h-3" />
                     <span>
-                      {new Date(activity.date).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
+                      {new Date(activity.date).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
                       })}
                     </span>
                   </div>
@@ -162,14 +191,17 @@ const Campaigns: React.FC = () => {
 
         {/* Your Joined Campaigns */}
         {joinedCampaigns.length > 0 && (
-          <div className="space-y-4 animate-slide-up" style={{ animationDelay: '0.3s' }}>
+          <div
+            className="space-y-4 animate-slide-up"
+            style={{ animationDelay: "0.3s" }}
+          >
             <h2 className="text-2xl font-bold flex items-center gap-2">
               <span>🏆</span> Your Campaigns
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {joinedCampaigns.map((campaign) => (
-                <CampaignCard 
-                  key={campaign.id} 
+                <CampaignCard
+                  key={campaign.id}
                   campaign={campaign}
                   onJoinChange={handleJoinChange}
                 />
@@ -179,7 +211,10 @@ const Campaigns: React.FC = () => {
         )}
 
         {/* Activity Detail Modal */}
-        <Dialog open={!!selectedActivity} onOpenChange={() => setSelectedActivity(null)}>
+        <Dialog
+          open={!!selectedActivity}
+          onOpenChange={() => setSelectedActivity(null)}
+        >
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
@@ -194,12 +229,16 @@ const Campaigns: React.FC = () => {
               <div className="p-4 rounded-lg bg-secondary">
                 <p className="text-sm text-muted-foreground">Event Date</p>
                 <p className="font-semibold">
-                  {selectedActivity && new Date(selectedActivity.date).toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                  })}
+                  {selectedActivity &&
+                    new Date(selectedActivity.date).toLocaleDateString(
+                      "en-US",
+                      {
+                        weekday: "long",
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      },
+                    )}
                 </p>
               </div>
               {selectedActivity?.isPremium && (

@@ -1,59 +1,58 @@
-import React from 'react';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Calendar, Crown } from 'lucide-react';
+import React from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 interface Activity {
   id: string;
-  name: string;
-  description: string;
-  icon: string;
+  type: "report" | "campaign" | "achievement";
+  title: string;
+  description?: string;
   date: string;
-  isPremium: boolean;
+  icon: string;
 }
 
 interface ActivityCardProps {
-  activity: Activity;
-  onClick?: () => void;
+  activities: Activity[];
 }
 
-const ActivityCard: React.FC<ActivityCardProps> = ({ activity, onClick }) => {
-  const formattedDate = new Date(activity.date).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
+const ActivityCard: React.FC<ActivityCardProps> = ({ activities }) => {
+  // If no activities or empty array, show a message
+  if (!activities || activities.length === 0) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        <p>No recent activities yet.</p>
+        <p className="text-sm mt-1">Start making an impact today!</p>
+      </div>
+    );
+  }
 
   return (
-    <Card 
-      className="hover-lift gradient-card border-0 shadow-card overflow-hidden cursor-pointer group"
-      onClick={onClick}
-    >
-      <CardHeader className="pb-2">
-        <div className="flex items-start justify-between">
-          <span className="text-3xl group-hover:scale-110 transition-transform duration-300">
-            {activity.icon}
-          </span>
-          {activity.isPremium && (
-            <Badge variant="secondary" className="bg-warning/10 text-warning">
-              <Crown className="w-3 h-3 mr-1" />
-              Premium
-            </Badge>
-          )}
+    <div className="space-y-3">
+      {activities.map((activity) => (
+        <div
+          key={activity.id}
+          className="flex items-start gap-3 p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors"
+        >
+          <span className="text-2xl">{activity.icon}</span>
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <p className="font-medium text-sm">{activity.title}</p>
+              <Badge variant="outline" className="text-xs">
+                {activity.type}
+              </Badge>
+            </div>
+            {activity.description && (
+              <p className="text-xs text-muted-foreground mt-1">
+                {activity.description}
+              </p>
+            )}
+            <p className="text-xs text-muted-foreground mt-1">
+              {new Date(activity.date).toLocaleDateString()}
+            </p>
+          </div>
         </div>
-      </CardHeader>
-      
-      <CardContent className="space-y-2">
-        <h3 className="font-semibold">{activity.name}</h3>
-        <p className="text-sm text-muted-foreground line-clamp-2">
-          {activity.description}
-        </p>
-        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-          <Calendar className="w-3 h-3" />
-          <span>{formattedDate}</span>
-        </div>
-      </CardContent>
-    </Card>
+      ))}
+    </div>
   );
 };
 

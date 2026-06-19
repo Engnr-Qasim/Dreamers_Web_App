@@ -1,44 +1,73 @@
-import React, { useState, useEffect } from 'react';
-import { User as UserIcon, Mail, Phone, MapPin, FileText, Save, Loader2 } from 'lucide-react';
-import MainLayout from '@/components/layout/MainLayout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/hooks/use-toast';
-import { CAMPAIGNS } from '@/lib/campaigns';
-import { getUserCampaigns, getUserReports } from '@/lib/storage';
-import { profileSchema } from '@/lib/validation';
+import React, { useState, useEffect } from "react";
+import {
+  User as UserIcon,
+  Mail,
+  Phone,
+  MapPin,
+  FileText,
+  Save,
+  Loader2,
+} from "lucide-react";
+import MainLayout from "@/components/layout/MainLayout";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { useUser, useClerk } from "@clerk/clerk-react";
+import { useToast } from "@/hooks/use-toast";
+import { CAMPAIGNS } from "@/lib/campaigns";
+import { getUserCampaigns, getUserReports } from "@/lib/storage";
+import { profileSchema } from "@/lib/validation";
 
 const Profile: React.FC = () => {
-  const { user, profile, updateProfile, refreshProfile } = useAuth();
+  const { user } = useUser();
+  const { updateUser } = useClerk();
   const { toast } = useToast();
-  
-  const [name, setName] = useState(profile?.name || '');
-  const [email, setEmail] = useState(profile?.email || '');
-  const [phone, setPhone] = useState(profile?.phone || '');
-  const [location, setLocation] = useState(profile?.location || '');
-  const [description, setDescription] = useState(profile?.description || '');
+
+  // Get user data from Clerk
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [location, setLocation] = useState("");
+  const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  
+
   const [joinedCampaignIds, setJoinedCampaignIds] = useState<string[]>([]);
   const [reportCount, setReportCount] = useState(0);
 
+  // Load user data from Clerk
   useEffect(() => {
-    if (profile) {
-      setName(profile.name || '');
-      setEmail(profile.email || '');
-      setPhone(profile.phone || '');
-      setLocation(profile.location || '');
-      setDescription(profile.description || '');
-    }
-  }, [profile]);
+    if (user) {
+      // Get full name from Clerk
+      const fullName =
+        user.fullName ||
+        `${user.firstName || ""} ${user.lastName || ""}`.trim() ||
+        user.emailAddresses?.[0]?.emailAddress?.split("@")[0] ||
+        "User";
 
+      setName(fullName);
+      setEmail(user.emailAddresses?.[0]?.emailAddress || "");
+
+      // Get custom metadata if you've stored phone, location, description there
+      // This assumes you've stored these in Clerk's public/private metadata
+      const metadata = user.publicMetadata as any;
+      setPhone(metadata?.phone || "");
+      setLocation(metadata?.location || "");
+      setDescription(metadata?.description || "");
+    }
+  }, [user]);
+
+  // Load user's campaigns and reports from local storage
   useEffect(() => {
     const loadUserData = async () => {
       if (user) {
@@ -53,12 +82,18 @@ const Profile: React.FC = () => {
 
   const handleSave = async () => {
     setErrors({});
-    
+
     // Validate with Zod
-    const result = profileSchema.safeParse({ name, email, phone, location, description });
+    const result = profileSchema.safeParse({
+      name,
+      email,
+      phone,
+      location,
+      description,
+    });
     if (!result.success) {
       const newErrors: Record<string, string> = {};
-      result.error.errors.forEach(err => {
+      result.error.errors.forEach((err) => {
         if (err.path[0]) {
           newErrors[err.path[0].toString()] = err.message;
         }
@@ -68,23 +103,46 @@ const Profile: React.FC = () => {
     }
 
     setLoading(true);
-    
+
     try {
-      const { error } = await updateProfile({ name, email, phone, location, description });
-      if (error) {
-        toast({ title: 'Error', description: error, variant: 'destructive' });
-      } else {
-        toast({ title: 'Profile Updated! ✨', description: 'Your changes have been saved.' });
-      }
+      // Update Clerk user with new data
+      await updateUser({
+        firstName: name.split(" ")[0] || "",
+        lastName: name.split(" ").slice(1).join(" ") || "",
+        publicMetadata: {
+          phone,
+          location,
+          description,
+        },
+      });
+
+      // Update local state
+      toast({
+        title: "Profile Updated! ✨",
+        description: "Your changes have been saved successfully.",
+      });
     } catch (error) {
-      toast({ title: 'Error', description: 'Failed to update profile', variant: 'destructive' });
+      console.error("Error updating profile:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update profile. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const joinedCampaigns = CAMPAIGNS.filter(c => joinedCampaignIds.includes(c.id));
-  const initials = profile?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U';
+  const joinedCampaigns = CAMPAIGNS.filter((c) =>
+    joinedCampaignIds.includes(c.id),
+  );
+  const initials =
+    name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2) || "U";
 
   return (
     <MainLayout>
@@ -98,17 +156,23 @@ const Profile: React.FC = () => {
               </AvatarFallback>
             </Avatar>
             <div className="flex-1">
-              <h1 className="text-3xl font-bold">{profile?.name}</h1>
-              <p className="text-muted-foreground">{profile?.email}</p>
+              <h1 className="text-3xl font-bold">{name}</h1>
+              <p className="text-muted-foreground">{email}</p>
               <div className="flex flex-wrap gap-2 mt-2">
                 <Badge variant="secondary">
                   <MapPin className="w-3 h-3 mr-1" />
-                  {profile?.location || 'No location'}
+                  {location || "No location"}
                 </Badge>
-                <Badge variant="secondary" className="bg-primary/10 text-primary">
+                <Badge
+                  variant="secondary"
+                  className="bg-primary/10 text-primary"
+                >
                   {joinedCampaignIds.length} Campaigns
                 </Badge>
-                <Badge variant="secondary" className="bg-success/10 text-success">
+                <Badge
+                  variant="secondary"
+                  className="bg-success/10 text-success"
+                >
                   {reportCount} Reports
                 </Badge>
               </div>
@@ -142,9 +206,11 @@ const Profile: React.FC = () => {
                         required
                       />
                     </div>
-                    {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
+                    {errors.name && (
+                      <p className="text-sm text-destructive">{errors.name}</p>
+                    )}
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="email">Email</Label>
                     <div className="relative">
@@ -153,15 +219,12 @@ const Profile: React.FC = () => {
                         id="email"
                         type="email"
                         value={email}
-                        onChange={(e) => setEmail(e.target.value)}
                         className="pl-10"
-                        maxLength={255}
                         disabled
                       />
                     </div>
-                    {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="phone">Phone</Label>
                     <div className="relative">
@@ -175,9 +238,11 @@ const Profile: React.FC = () => {
                         maxLength={20}
                       />
                     </div>
-                    {errors.phone && <p className="text-sm text-destructive">{errors.phone}</p>}
+                    {errors.phone && (
+                      <p className="text-sm text-destructive">{errors.phone}</p>
+                    )}
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="location">Location</Label>
                     <div className="relative">
@@ -190,10 +255,14 @@ const Profile: React.FC = () => {
                         maxLength={500}
                       />
                     </div>
-                    {errors.location && <p className="text-sm text-destructive">{errors.location}</p>}
+                    {errors.location && (
+                      <p className="text-sm text-destructive">
+                        {errors.location}
+                      </p>
+                    )}
                   </div>
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="description">About Me</Label>
                   <div className="relative">
@@ -207,10 +276,18 @@ const Profile: React.FC = () => {
                       maxLength={1000}
                     />
                   </div>
-                  {errors.description && <p className="text-sm text-destructive">{errors.description}</p>}
+                  {errors.description && (
+                    <p className="text-sm text-destructive">
+                      {errors.description}
+                    </p>
+                  )}
                 </div>
-                
-                <Button onClick={handleSave} disabled={loading} className="w-full md:w-auto">
+
+                <Button
+                  onClick={handleSave}
+                  disabled={loading}
+                  className="w-full md:w-auto"
+                >
                   {loading ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -227,15 +304,16 @@ const Profile: React.FC = () => {
             </Card>
 
             {/* Joined Campaigns */}
-            <Card className="gradient-card border-0 shadow-card animate-slide-up" style={{ animationDelay: '0.1s' }}>
+            <Card
+              className="gradient-card border-0 shadow-card animate-slide-up"
+              style={{ animationDelay: "0.1s" }}
+            >
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <span>🏆</span>
                   My Campaigns
                 </CardTitle>
-                <CardDescription>
-                  Campaigns you've joined
-                </CardDescription>
+                <CardDescription>Campaigns you've joined</CardDescription>
               </CardHeader>
               <CardContent>
                 {joinedCampaigns.length > 0 ? (
@@ -258,7 +336,9 @@ const Profile: React.FC = () => {
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
                     <p>You haven't joined any campaigns yet.</p>
-                    <p className="text-sm mt-1">Visit the Campaigns page to get started!</p>
+                    <p className="text-sm mt-1">
+                      Visit the Campaigns page to get started!
+                    </p>
                   </div>
                 )}
               </CardContent>

@@ -1,26 +1,45 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Users, Target } from 'lucide-react';
-import { Campaign } from '@/lib/storage';
-import { getProgressPercentage } from '@/lib/campaigns';
-import { useAuth } from '@/contexts/AuthContext';
-import { joinCampaign, leaveCampaign, isJoinedCampaign } from '@/lib/storage';
-import { sendCampaignJoinNotification } from '@/lib/emailService';
-import { useToast } from '@/hooks/use-toast';
+import React, { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Users, Target } from "lucide-react";
+import { Campaign } from "@/lib/storage";
+import { getProgressPercentage } from "@/lib/campaigns";
+import { useUser } from "@clerk/clerk-react";
+import { joinCampaign, leaveCampaign, isJoinedCampaign } from "@/lib/storage";
+import { sendCampaignJoinNotification } from "@/lib/emailService";
+import { useToast } from "@/hooks/use-toast";
 
 interface CampaignCardProps {
   campaign: Campaign;
   onJoinChange?: () => void;
 }
 
-const CampaignCard: React.FC<CampaignCardProps> = ({ campaign, onJoinChange }) => {
-  const { user, profile } = useAuth();
+const CampaignCard: React.FC<CampaignCardProps> = ({
+  campaign,
+  onJoinChange,
+}) => {
+  const { user } = useUser();
   const { toast } = useToast();
   const [isJoined, setIsJoined] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Derive user info from Clerk
+  const userName =
+    user?.fullName ||
+    user?.firstName ||
+    user?.emailAddresses?.[0]?.emailAddress?.split("@")[0] ||
+    "User";
+  const userEmail =
+    user?.emailAddresses?.[0]?.emailAddress || "anonymous@dreamers.app";
+  const userPhone = (user?.publicMetadata as Record<string, string>)?.phone;
+  const userLocation = (user?.publicMetadata as Record<string, string>)?.location;
 
   useEffect(() => {
     const checkJoinStatus = async () => {
@@ -36,16 +55,16 @@ const CampaignCard: React.FC<CampaignCardProps> = ({ campaign, onJoinChange }) =
 
   const handleJoinToggle = async () => {
     if (!user) return;
-    
+
     setLoading(true);
-    
+
     try {
       if (isJoined) {
         const success = await leaveCampaign(user.id, campaign.id);
         if (success) {
           setIsJoined(false);
           toast({
-            title: 'Left Campaign',
+            title: "Left Campaign",
             description: `You have left "${campaign.name}"`,
           });
         }
@@ -53,43 +72,42 @@ const CampaignCard: React.FC<CampaignCardProps> = ({ campaign, onJoinChange }) =
         const success = await joinCampaign(user.id, campaign.id);
         if (success) {
           setIsJoined(true);
-          
-          // Send email notification
+
           await sendCampaignJoinNotification({
-            from_name: profile?.name || 'User',
-            from_email: profile?.email || user.email || 'anonymous@dreamers.app',
-            phone: profile?.phone || undefined,
-            action_type: 'Campaign',
+            from_name: userName,
+            from_email: userEmail,
+            phone: userPhone,
+            action_type: "Campaign",
             subject: `New Campaign Join: ${campaign.name}`,
-            message: `${profile?.name || 'User'} has joined the "${campaign.name}" campaign!`,
+            message: `${userName} has joined the "${campaign.name}" campaign!`,
             campaign_name: campaign.name,
-            location: profile?.location || undefined,
+            location: userLocation,
           });
-          
+
           toast({
-            title: 'Joined Campaign! 🎉',
+            title: "Joined Campaign! 🎉",
             description: `Welcome to "${campaign.name}"!`,
           });
         }
       }
-      
+
       onJoinChange?.();
     } catch (error) {
-      console.error('Error updating campaign:', error);
+      console.error("Error updating campaign:", error);
       toast({
-        title: 'Error',
-        description: 'Failed to update campaign membership',
-        variant: 'destructive',
+        title: "Error",
+        description: "Failed to update campaign membership",
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
   };
 
-  const categoryColors = {
-    environment: 'bg-primary/10 text-primary',
-    community: 'bg-info/10 text-info',
-    awareness: 'bg-warning/10 text-warning',
+  const categoryColors: Record<string, string> = {
+    environment: "bg-primary/10 text-primary",
+    community: "bg-info/10 text-info",
+    awareness: "bg-warning/10 text-warning",
   };
 
   return (
@@ -102,19 +120,22 @@ const CampaignCard: React.FC<CampaignCardProps> = ({ campaign, onJoinChange }) =
             </span>
             <div>
               <h3 className="font-semibold text-lg">{campaign.name}</h3>
-              <Badge variant="secondary" className={categoryColors[campaign.category]}>
+              <Badge
+                variant="secondary"
+                className={categoryColors[campaign.category] || ""}
+              >
                 {campaign.category}
               </Badge>
             </div>
           </div>
         </div>
       </CardHeader>
-      
+
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground line-clamp-2">
           {campaign.description}
         </p>
-        
+
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Progress</span>
@@ -122,7 +143,7 @@ const CampaignCard: React.FC<CampaignCardProps> = ({ campaign, onJoinChange }) =
           </div>
           <Progress value={percentage} className="h-2" />
         </div>
-        
+
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
           <div className="flex items-center gap-1">
             <Users className="w-4 h-4" />
@@ -134,15 +155,19 @@ const CampaignCard: React.FC<CampaignCardProps> = ({ campaign, onJoinChange }) =
           </div>
         </div>
       </CardContent>
-      
+
       <CardFooter>
         <Button
           className="w-full"
-          variant={isJoined ? 'outline' : 'default'}
+          variant={isJoined ? "outline" : "default"}
           onClick={handleJoinToggle}
           disabled={loading}
         >
-          {loading ? 'Processing...' : isJoined ? 'Leave Campaign' : 'Join Campaign'}
+          {loading
+            ? "Processing..."
+            : isJoined
+              ? "Leave Campaign"
+              : "Join Campaign"}
         </Button>
       </CardFooter>
     </Card>

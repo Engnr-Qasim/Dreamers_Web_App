@@ -3,7 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { ClerkProvider, useUser } from "@clerk/clerk-react";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import Login from "./pages/Login";
 import Home from "./pages/Home";
@@ -15,6 +15,13 @@ import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
 
+// Clerk publishable key
+const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+
+if (!clerkPubKey) {
+  throw new Error("Missing Publishable Key");
+}
+
 // Loading component
 const LoadingScreen = () => (
   <div className="min-h-screen flex items-center justify-center">
@@ -23,32 +30,34 @@ const LoadingScreen = () => (
 );
 
 // Protected Route component
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuth();
-  
-  if (isLoading) {
+const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
+  const { isLoaded, isSignedIn } = useUser();
+
+  if (!isLoaded) {
     return <LoadingScreen />;
   }
-  
-  if (!isAuthenticated) {
+
+  if (!isSignedIn) {
     return <Navigate to="/" replace />;
   }
-  
+
   return <>{children}</>;
 };
 
 // Public Route component (redirects to home if authenticated)
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuth();
-  
-  if (isLoading) {
+  const { isLoaded, isSignedIn } = useUser();
+
+  if (!isLoaded) {
     return <LoadingScreen />;
   }
-  
-  if (isAuthenticated) {
+
+  if (isSignedIn) {
     return <Navigate to="/home" replace />;
   }
-  
+
   return <>{children}</>;
 };
 
@@ -101,9 +110,14 @@ const AppRoutes = () => {
 };
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <ThemeProvider>
-      <AuthProvider>
+  <ClerkProvider
+    publishableKey={clerkPubKey}
+    afterSignOutUrl="/"
+    signInUrl="/"
+    signUpUrl="/"
+  >
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
         <TooltipProvider>
           <Toaster />
           <Sonner />
@@ -111,9 +125,9 @@ const App = () => (
             <AppRoutes />
           </BrowserRouter>
         </TooltipProvider>
-      </AuthProvider>
-    </ThemeProvider>
-  </QueryClientProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
+  </ClerkProvider>
 );
 
 export default App;

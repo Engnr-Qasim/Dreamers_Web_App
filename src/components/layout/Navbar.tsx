@@ -1,22 +1,32 @@
-import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Home, User, FileText, Flag, Menu, Sun, Moon, LogOut } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { useAuth } from '@/contexts/AuthContext';
-import { useTheme } from '@/contexts/ThemeContext';
+import React from "react";
+import { Link, useLocation } from "react-router-dom";
+import {
+  Home,
+  User,
+  FileText,
+  Flag,
+  Menu,
+  Sun,
+  Moon,
+  LogOut,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { useTheme } from "@/contexts/ThemeContext";
+import { useUser, useClerk } from "@clerk/clerk-react";
 
 const Navbar: React.FC = () => {
-  const { profile, logout } = useAuth();
+  const { user } = useUser();
+  const { signOut } = useClerk();
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const [isOpen, setIsOpen] = React.useState(false);
 
   const navItems = [
-    { path: '/home', label: 'Home', icon: Home },
-    { path: '/profile', label: 'Profile', icon: User },
-    { path: '/reports', label: 'Reports', icon: FileText },
-    { path: '/campaigns', label: 'Campaigns', icon: Flag },
+    { path: "/home", label: "Home", icon: Home },
+    { path: "/profile", label: "Profile", icon: User },
+    { path: "/reports", label: "Reports", icon: FileText },
+    { path: "/campaigns", label: "Campaigns", icon: Flag },
   ];
 
   const isActive = (path: string) => location.pathname === path;
@@ -32,9 +42,9 @@ const Navbar: React.FC = () => {
             onClick={() => mobile && setIsOpen(false)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 ${
               isActive(item.path)
-                ? 'bg-primary text-primary-foreground'
-                : 'hover:bg-secondary text-foreground'
-            } ${mobile ? 'w-full' : ''}`}
+                ? "bg-primary text-primary-foreground"
+                : "hover:bg-secondary text-foreground"
+            } ${mobile ? "w-full" : ""}`}
           >
             <Icon className="w-5 h-5" />
             <span>{item.label}</span>
@@ -43,6 +53,18 @@ const Navbar: React.FC = () => {
       })}
     </>
   );
+
+  const handleLogout = async () => {
+    await signOut();
+    setIsOpen(false);
+  };
+
+  // Get user's name
+  const userName =
+    user?.fullName ||
+    user?.firstName ||
+    user?.emailAddresses?.[0]?.emailAddress?.split("@")[0] ||
+    "User";
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b bg-card/80 backdrop-blur-md">
@@ -69,19 +91,19 @@ const Navbar: React.FC = () => {
               onClick={toggleTheme}
               className="rounded-full"
             >
-              {theme === 'light' ? (
+              {theme === "light" ? (
                 <Moon className="w-5 h-5" />
               ) : (
                 <Sun className="w-5 h-5" />
               )}
             </Button>
 
-            {profile && (
+            {user && (
               <div className="hidden md:flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">
-                  Hi, {profile.name?.split(' ')[0] || 'User'}
+                  Hi, {userName.split(" ")[0]}
                 </span>
-                <Button variant="ghost" size="icon" onClick={logout}>
+                <Button variant="ghost" size="icon" onClick={handleLogout}>
                   <LogOut className="w-5 h-5" />
                 </Button>
               </div>
@@ -96,20 +118,19 @@ const Navbar: React.FC = () => {
               </SheetTrigger>
               <SheetContent side="right" className="w-72">
                 <div className="flex flex-col gap-4 mt-8">
-                  {profile && (
+                  {user && (
                     <div className="pb-4 border-b">
-                      <p className="font-semibold">{profile.name}</p>
-                      <p className="text-sm text-muted-foreground">{profile.email}</p>
+                      <p className="font-semibold">{userName}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {user.emailAddresses?.[0]?.emailAddress || ""}
+                      </p>
                     </div>
                   )}
                   <NavLinks mobile />
-                  {profile && (
+                  {user && (
                     <Button
                       variant="destructive"
-                      onClick={() => {
-                        logout();
-                        setIsOpen(false);
-                      }}
+                      onClick={handleLogout}
                       className="mt-4"
                     >
                       <LogOut className="w-4 h-4 mr-2" />
